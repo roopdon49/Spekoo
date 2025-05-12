@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Continuous Speech Recognition</title>
+  <style>
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      margin: 5px;
+    }
+    #textView1 {
+      margin-top: 10px;
+      padding: 10px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      height: 150px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <h2>Speech to Text (Continuous)</h2>
+  <button id="button1">Start Listening</button>
+  <button id="button2">Stop Listening</button>
+  <div id="textView1">Press Start to begin...</div>
+
+  <script>
+    const button1 = document.getElementById('button1');
+    const button2 = document.getElementById('button2');
+    const textView = document.getElementById('textView1');
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      alert('Speech Recognition not supported in this browser.');
+    } else {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = false;
+      recognition.lang = 'en-US';
+
+      let keepListening = false;
+      let isRecognizing = false;
+
+      function startRecognition() {
+        if (!isRecognizing) {
+          try {
+            recognition.start();
+          } catch (e) {
+            console.log('Already started.');
+          }
+        }
+      }
+
+      recognition.onstart = () => {
+        isRecognizing = true;
+        textView.textContent += '\n[Listening...]';
+      };
+
+      recognition.onresult = (event) => {
+        let transcript = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          transcript += event.results[i][0].transcript + '\n';
+        }
+        textView.textContent += transcript;
+      };
+
+      recognition.onerror = (event) => {
+        textView.textContent += `\n[Error]: ${event.error}`;
+      };
+
+      recognition.onend = () => {
+        isRecognizing = false;
+        if (keepListening) {
+          // Restart after slight delay to avoid permission re-prompt
+          setTimeout(() => startRecognition(), 500);
+        } else {
+          textView.textContent += '\n[Stopped Listening]';
+        }
+      };
+
+      button1.onclick = () => {
+        keepListening = true;
+        startRecognition();
+      };
+
+      button2.onclick = () => {
+        keepListening = false;
+        recognition.stop();
+      };
+    }
+  </script>
+</body>
+</html>
