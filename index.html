@@ -4,123 +4,153 @@
   <meta charset="UTF-8">
   <title>Live Speech Translator</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
   <style>
-    /* Global Styles */
+    :root {
+      --primary: #007aff;
+      --danger: #ff3b30;
+      --bg: #f2f4f8;
+      --card-bg: #ffffff;
+      --text: #1e1e1e;
+    }
+
     * {
       box-sizing: border-box;
     }
 
     body {
       margin: 0;
-      font-family: 'Segoe UI', sans-serif;
-      background: linear-gradient(to right, #a1c4fd, #c2e9fb);
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
       display: flex;
       flex-direction: column;
       align-items: center;
-      min-height: 100vh;
-      color: #333;
+      padding: 20px;
     }
 
-    h1 {
-      margin: 30px 10px 10px;
+    .title {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin: 0 0 20px;
       font-size: 2rem;
       text-align: center;
+      color: var(--primary);
+      flex-wrap: wrap;
+    }
+
+    .title img {
+      width: 48px;
+      height: 48px;
+      object-fit: contain;
     }
 
     .container {
-      background: rgba(255, 255, 255, 0.8);
+      background: var(--card-bg);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
       border-radius: 16px;
-      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
-      padding: 20px;
-      width: 95%;
-      max-width: 700px;
-      margin: 20px auto;
+      padding: 24px;
+      max-width: 750px;
+      width: 100%;
     }
 
     .row {
       display: flex;
-      flex-wrap: wrap;
       gap: 10px;
-      justify-content: space-between;
+      flex-wrap: wrap;
       margin-bottom: 20px;
     }
 
-    select, button {
-      flex: 1 1 45%;
-      padding: 10px;
+    select {
+      flex: 1 1 48%;
+      padding: 10px 12px;
       font-size: 16px;
       border-radius: 10px;
       border: 1px solid #ccc;
-      background-color: #f9f9f9;
+      background: #f9f9f9;
     }
 
-    button#toggleBtn {
-      flex: 1 1 100%;
-      background-color: #3498db;
-      color: white;
+    #toggleBtn {
+      width: 100%;
+      padding: 14px;
+      font-size: 16px;
       border: none;
+      border-radius: 10px;
+      background-color: var(--primary);
+      color: white;
       font-weight: bold;
-      transition: background 0.3s;
+      transition: background 0.3s ease;
+      cursor: pointer;
+      margin-bottom: 20px;
     }
 
-    button#toggleBtn.stop {
-      background-color: #e74c3c;
+    #toggleBtn.stop {
+      background-color: var(--danger);
     }
 
-    h3 {
-      margin-top: 30px;
+    .section {
+      margin-bottom: 20px;
+    }
+
+    .section h3 {
+      font-size: 1rem;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      font-size: 1.1rem;
+      margin-bottom: 10px;
+    }
+
+    .box {
+      background: #fefefe;
+      padding: 14px;
+      border-radius: 10px;
+      border: 1px solid #ddd;
+      min-height: 80px;
+      max-height: 200px;
+      overflow-y: auto;
+      font-size: 16px;
+      transition: all 0.3s ease;
+    }
+
+    .box strong {
+      font-weight: 600;
+      color: var(--primary);
     }
 
     .copy-icon {
       cursor: pointer;
       font-size: 20px;
-      color: #2c3e50;
-      transition: transform 0.2s;
+      color: #555;
+      transition: transform 0.2s ease;
     }
 
     .copy-icon:hover {
       transform: scale(1.2);
     }
 
-    .box {
-      background: #ffffff;
-      border: 1px solid #ddd;
-      padding: 15px;
-      border-radius: 10px;
-      min-height: 80px;
-      max-height: 200px;
-      overflow-y: auto;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-
-    strong {
-      font-weight: bold;
-      color: #34495e;
-    }
-
     @media (max-width: 600px) {
-      h1 {
-        font-size: 1.5rem;
-      }
-
       .row {
         flex-direction: column;
       }
-
-      select, button {
+      select {
         flex: 1 1 100%;
+      }
+      .title {
+        flex-direction: column;
+        gap: 8px;
       }
     }
   </style>
 </head>
 <body>
 
-  <h1>Live Speech Translator</h1>
+  <h1 class="title">
+    🎙️ Live Speech Translator
+    <img src="https://roopdon49.github.io/Spekoo/image.png" alt="Logo">
+  </h1>
+
   <div class="container">
     <div class="row">
       <select id="recognizeLang"></select>
@@ -129,14 +159,18 @@
 
     <button id="toggleBtn">🎤 Start Listening</button>
 
-    <h3>Recognized Speech</h3>
-    <div id="recognizedText" class="box"></div>
+    <div class="section">
+      <h3>Recognized Speech</h3>
+      <div id="recognizedText" class="box"></div>
+    </div>
 
-    <h3>
-      Translated Text
-      <span class="copy-icon" onclick="copyTranslatedText()">📋</span>
-    </h3>
-    <div id="translatedText" class="box"></div>
+    <div class="section">
+      <h3>
+        Translated Text
+        <span class="copy-icon" onclick="copyTranslatedText()">📋</span>
+      </h3>
+      <div id="translatedText" class="box"></div>
+    </div>
   </div>
 
   <script>
@@ -186,10 +220,8 @@
       const transcript = results[results.length - 1][0].transcript.trim();
       if (transcript !== lastRecognized) {
         lastRecognized = transcript;
-        // Add bold for current, and demote previous bold
-        const currentHTML = recognizedTextDiv.innerHTML.replace(/<strong>(.*?)<\/strong>/, "$1");
-        recognizedTextDiv.innerHTML = `<strong>${transcript}</strong>` + (currentHTML ? "<br>" + currentHTML : "");
-
+        const previous = recognizedTextDiv.innerHTML.replace(/<strong>(.*?)<\/strong>/, '$1');
+        recognizedTextDiv.innerHTML = `<strong>${transcript}</strong>` + (previous ? `<br>${previous}` : '');
         translateText(transcript, translateLangSelect.value);
       }
     };
@@ -221,6 +253,7 @@
           const translation = data[0].map(item => item[0]).join('');
           let existing = translatedTextDiv.innerText.trim();
           translatedTextDiv.innerText = translation + (existing ? '\n' + existing : '');
+          translatedTextDiv.scrollTop = 0;
           speakText(translation, targetLang);
         })
         .catch(() => {
@@ -242,7 +275,7 @@
       const lines = translatedTextDiv.innerText.trim().split('\n').reverse();
       const fullText = lines.join('\n');
       navigator.clipboard.writeText(fullText).then(() => {
-        alert("Translated text copied!");
+        alert("✅ Translated text copied!");
       });
     }
 
