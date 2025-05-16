@@ -2,13 +2,18 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Speech to Translate</title>
+  <title>Live Speech Translator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
+    /* Global Styles */
+    * {
+      box-sizing: border-box;
+    }
+
     body {
-      font-family: "Segoe UI", sans-serif;
-      background: linear-gradient(145deg, #eef2f3, #8e9eab);
       margin: 0;
-      padding: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to right, #a1c4fd, #c2e9fb);
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -17,94 +22,121 @@
     }
 
     h1 {
-      margin-top: 30px;
+      margin: 30px 10px 10px;
+      font-size: 2rem;
+      text-align: center;
     }
 
     .container {
-      width: 95%;
-      max-width: 800px;
-      background: white;
-      margin: 20px auto;
-      padding: 20px;
+      background: rgba(255, 255, 255, 0.8);
       border-radius: 16px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+      padding: 20px;
+      width: 95%;
+      max-width: 700px;
+      margin: 20px auto;
+    }
+
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: space-between;
+      margin-bottom: 20px;
     }
 
     select, button {
+      flex: 1 1 45%;
       padding: 10px;
       font-size: 16px;
-      margin: 10px 5px 20px;
-      border-radius: 8px;
+      border-radius: 10px;
       border: 1px solid #ccc;
-      background: #f5f5f5;
+      background-color: #f9f9f9;
     }
 
-    #toggleBtn {
+    button#toggleBtn {
+      flex: 1 1 100%;
       background-color: #3498db;
       color: white;
       border: none;
-      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.3s;
     }
 
-    #toggleBtn.stop {
+    button#toggleBtn.stop {
       background-color: #e74c3c;
     }
 
-    #recognizedText, #translatedText {
-      background: #fafafa;
-      border: 1px solid #ddd;
-      padding: 15px;
-      border-radius: 8px;
-      white-space: pre-wrap;
-      margin-bottom: 10px;
-      max-height: 200px;
-      overflow-y: auto;
+    h3 {
+      margin-top: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 1.1rem;
     }
 
     .copy-icon {
       cursor: pointer;
-      float: right;
-      font-size: 18px;
-      margin-top: -5px;
+      font-size: 20px;
+      color: #2c3e50;
+      transition: transform 0.2s;
+    }
+
+    .copy-icon:hover {
+      transform: scale(1.2);
+    }
+
+    .box {
+      background: #ffffff;
+      border: 1px solid #ddd;
+      padding: 15px;
+      border-radius: 10px;
+      min-height: 80px;
+      max-height: 200px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
     }
 
     strong {
-      color: #2c3e50;
+      font-weight: bold;
+      color: #34495e;
     }
 
     @media (max-width: 600px) {
       h1 {
-        font-size: 22px;
+        font-size: 1.5rem;
+      }
+
+      .row {
+        flex-direction: column;
       }
 
       select, button {
-        font-size: 14px;
-        padding: 8px;
+        flex: 1 1 100%;
       }
     }
   </style>
 </head>
 <body>
 
-  <h1>Speech to Translate</h1>
+  <h1>Live Speech Translator</h1>
   <div class="container">
-    <label for="recognizeLang">Speech Language:</label>
-    <select id="recognizeLang"></select>
+    <div class="row">
+      <select id="recognizeLang"></select>
+      <select id="translateLang"></select>
+    </div>
 
-    <label for="translateLang">Translate To:</label>
-    <select id="translateLang"></select>
-
-    <br />
     <button id="toggleBtn">🎤 Start Listening</button>
 
-    <h3>Recognized Text</h3>
-    <div id="recognizedText"></div>
+    <h3>Recognized Speech</h3>
+    <div id="recognizedText" class="box"></div>
 
     <h3>
       Translated Text
       <span class="copy-icon" onclick="copyTranslatedText()">📋</span>
     </h3>
-    <div id="translatedText"></div>
+    <div id="translatedText" class="box"></div>
   </div>
 
   <script>
@@ -135,15 +167,15 @@
     ];
 
     languages.forEach(lang => {
-      const option1 = document.createElement("option");
-      option1.value = lang.code;
-      option1.textContent = lang.name;
-      recognizeLangSelect.appendChild(option1);
+      const opt1 = document.createElement("option");
+      opt1.value = lang.code;
+      opt1.textContent = lang.name;
+      recognizeLangSelect.appendChild(opt1);
 
-      const option2 = document.createElement("option");
-      option2.value = lang.translate;
-      option2.textContent = lang.name;
-      translateLangSelect.appendChild(option2);
+      const opt2 = document.createElement("option");
+      opt2.value = lang.translate;
+      opt2.textContent = lang.name;
+      translateLangSelect.appendChild(opt2);
     });
 
     recognizeLangSelect.value = "en-US";
@@ -154,10 +186,9 @@
       const transcript = results[results.length - 1][0].transcript.trim();
       if (transcript !== lastRecognized) {
         lastRecognized = transcript;
-
-        // Show recent in bold on top
-        const currentHTML = recognizedTextDiv.innerHTML;
-        recognizedTextDiv.innerHTML = `<strong>${transcript}</strong>` + (currentHTML ? "<br>" + currentHTML.replace(/<strong>(.*?)<\/strong>/, "$1") : "");
+        // Add bold for current, and demote previous bold
+        const currentHTML = recognizedTextDiv.innerHTML.replace(/<strong>(.*?)<\/strong>/, "$1");
+        recognizedTextDiv.innerHTML = `<strong>${transcript}</strong>` + (currentHTML ? "<br>" + currentHTML : "");
 
         translateText(transcript, translateLangSelect.value);
       }
@@ -184,15 +215,12 @@
 
     function translateText(text, targetLang) {
       const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
-
       fetch(url)
         .then(res => res.json())
         .then(data => {
           const translation = data[0].map(item => item[0]).join('');
           let existing = translatedTextDiv.innerText.trim();
           translatedTextDiv.innerText = translation + (existing ? '\n' + existing : '');
-
-          // Speak the translated text
           speakText(translation, targetLang);
         })
         .catch(() => {
@@ -218,7 +246,6 @@
       });
     }
 
-    // Load voices before speaking
     window.speechSynthesis.onvoiceschanged = () => {};
   </script>
 </body>
