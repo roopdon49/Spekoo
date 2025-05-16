@@ -1,96 +1,225 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Continuous Speech Recognition</title>
+  <title>Speech to Translate</title>
   <style>
-    button {
-      padding: 10px 20px;
-      font-size: 16px;
-      margin: 5px;
+    body {
+      font-family: "Segoe UI", sans-serif;
+      background: linear-gradient(145deg, #eef2f3, #8e9eab);
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      color: #333;
     }
-    #textView1 {
-      margin-top: 10px;
+
+    h1 {
+      margin-top: 30px;
+    }
+
+    .container {
+      width: 95%;
+      max-width: 800px;
+      background: white;
+      margin: 20px auto;
+      padding: 20px;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    }
+
+    select, button {
       padding: 10px;
       font-size: 16px;
+      margin: 10px 5px 20px;
+      border-radius: 8px;
       border: 1px solid #ccc;
-      height: 150px;
-      overflow-y: auto;
+      background: #f5f5f5;
+    }
+
+    #toggleBtn {
+      background-color: #3498db;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    #toggleBtn.stop {
+      background-color: #e74c3c;
+    }
+
+    #recognizedText, #translatedText {
+      background: #fafafa;
+      border: 1px solid #ddd;
+      padding: 15px;
+      border-radius: 8px;
       white-space: pre-wrap;
+      margin-bottom: 10px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .copy-icon {
+      cursor: pointer;
+      float: right;
+      font-size: 18px;
+      margin-top: -5px;
+    }
+
+    strong {
+      color: #2c3e50;
+    }
+
+    @media (max-width: 600px) {
+      h1 {
+        font-size: 22px;
+      }
+
+      select, button {
+        font-size: 14px;
+        padding: 8px;
+      }
     }
   </style>
 </head>
 <body>
-  <h2>Speech to Text (Continuous)</h2>
-  <button id="button1">Start Listening</button>
-  <button id="button2">Stop Listening</button>
-  <div id="textView1">Press Start to begin...</div>
+
+  <h1>Speech to Translate</h1>
+  <div class="container">
+    <label for="recognizeLang">Speech Language:</label>
+    <select id="recognizeLang"></select>
+
+    <label for="translateLang">Translate To:</label>
+    <select id="translateLang"></select>
+
+    <br />
+    <button id="toggleBtn">🎤 Start Listening</button>
+
+    <h3>Recognized Text</h3>
+    <div id="recognizedText"></div>
+
+    <h3>
+      Translated Text
+      <span class="copy-icon" onclick="copyTranslatedText()">📋</span>
+    </h3>
+    <div id="translatedText"></div>
+  </div>
 
   <script>
-    const button1 = document.getElementById('button1');
-    const button2 = document.getElementById('button2');
-    const textView = document.getElementById('textView1');
+    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    recognition.continuous = true;
+    recognition.interimResults = false;
 
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const toggleBtn = document.getElementById('toggleBtn');
+    const recognizedTextDiv = document.getElementById('recognizedText');
+    const translatedTextDiv = document.getElementById('translatedText');
+    const recognizeLangSelect = document.getElementById('recognizeLang');
+    const translateLangSelect = document.getElementById('translateLang');
 
-    if (!SpeechRecognition) {
-      alert('Speech Recognition not supported in this browser.');
-    } else {
-      const recognition = new SpeechRecognition();
-      recognition.continuous = true;
-      recognition.interimResults = false;
-      recognition.lang = 'en-US';
+    let isListening = false;
+    let lastRecognized = "";
 
-      let keepListening = false;
-      let isRecognizing = false;
+    const languages = [
+      { name: "English (US)", code: "en-US", translate: "en" },
+      { name: "English (UK)", code: "en-GB", translate: "en" },
+      { name: "English (India)", code: "en-IN", translate: "en" },
+      { name: "Hindi", code: "hi-IN", translate: "hi" },
+      { name: "Spanish", code: "es-ES", translate: "es" },
+      { name: "French", code: "fr-FR", translate: "fr" },
+      { name: "German", code: "de-DE", translate: "de" },
+      { name: "Arabic", code: "ar-SA", translate: "ar" },
+      { name: "Chinese (Simplified)", code: "zh-CN", translate: "zh-CN" },
+      { name: "Japanese", code: "ja-JP", translate: "ja" }
+    ];
 
-      function startRecognition() {
-        if (!isRecognizing) {
-          try {
-            recognition.start();
-          } catch (e) {
-            console.log('Already started.');
-          }
-        }
+    languages.forEach(lang => {
+      const option1 = document.createElement("option");
+      option1.value = lang.code;
+      option1.textContent = lang.name;
+      recognizeLangSelect.appendChild(option1);
+
+      const option2 = document.createElement("option");
+      option2.value = lang.translate;
+      option2.textContent = lang.name;
+      translateLangSelect.appendChild(option2);
+    });
+
+    recognizeLangSelect.value = "en-US";
+    translateLangSelect.value = "hi";
+
+    recognition.onresult = function(event) {
+      const results = event.results;
+      const transcript = results[results.length - 1][0].transcript.trim();
+      if (transcript !== lastRecognized) {
+        lastRecognized = transcript;
+
+        // Show recent in bold on top
+        const currentHTML = recognizedTextDiv.innerHTML;
+        recognizedTextDiv.innerHTML = `<strong>${transcript}</strong>` + (currentHTML ? "<br>" + currentHTML.replace(/<strong>(.*?)<\/strong>/, "$1") : "");
+
+        translateText(transcript, translateLangSelect.value);
       }
+    };
 
-      recognition.onstart = () => {
-        isRecognizing = true;
-        textView.textContent += '\n[Listening...]';
-      };
+    recognition.onend = () => {
+      if (isListening) recognition.start();
+    };
 
-      recognition.onresult = (event) => {
-        let transcript = '';
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-          transcript += event.results[i][0].transcript + '\n';
-        }
-        textView.textContent += transcript;
-      };
-
-      recognition.onerror = (event) => {
-        textView.textContent += `\n[Error]: ${event.error}`;
-      };
-
-      recognition.onend = () => {
-        isRecognizing = false;
-        if (keepListening) {
-          // Restart after slight delay to avoid permission re-prompt
-          setTimeout(() => startRecognition(), 500);
-        } else {
-          textView.textContent += '\n[Stopped Listening]';
-        }
-      };
-
-      button1.onclick = () => {
-        keepListening = true;
-        startRecognition();
-      };
-
-      button2.onclick = () => {
-        keepListening = false;
+    toggleBtn.onclick = () => {
+      if (isListening) {
         recognition.stop();
-      };
+        toggleBtn.textContent = "🎤 Start Listening";
+        toggleBtn.classList.remove("stop");
+        isListening = false;
+      } else {
+        recognition.lang = recognizeLangSelect.value;
+        recognition.start();
+        toggleBtn.textContent = "🛑 Stop Listening";
+        toggleBtn.classList.add("stop");
+        isListening = true;
+      }
+    };
+
+    function translateText(text, targetLang) {
+      const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
+
+      fetch(url)
+        .then(res => res.json())
+        .then(data => {
+          const translation = data[0].map(item => item[0]).join('');
+          let existing = translatedTextDiv.innerText.trim();
+          translatedTextDiv.innerText = translation + (existing ? '\n' + existing : '');
+
+          // Speak the translated text
+          speakText(translation, targetLang);
+        })
+        .catch(() => {
+          translatedTextDiv.innerText = 'Translation error';
+        });
     }
+
+    function speakText(text, lang) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = lang;
+      const voices = speechSynthesis.getVoices();
+      const match = voices.find(v => v.lang.toLowerCase().startsWith(lang.toLowerCase()));
+      if (match) utterance.voice = match;
+      speechSynthesis.cancel();
+      speechSynthesis.speak(utterance);
+    }
+
+    function copyTranslatedText() {
+      const lines = translatedTextDiv.innerText.trim().split('\n').reverse();
+      const fullText = lines.join('\n');
+      navigator.clipboard.writeText(fullText).then(() => {
+        alert("Translated text copied!");
+      });
+    }
+
+    // Load voices before speaking
+    window.speechSynthesis.onvoiceschanged = () => {};
   </script>
 </body>
 </html>
