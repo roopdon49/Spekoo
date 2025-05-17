@@ -195,6 +195,7 @@
   <div class="top-bar">
     <div class="title">
       <img src="https://roopdon49.github.io/Spekoo/image.png" alt="Logo">
+      <span>Spekoo</span>
        🎙️ Live Speech Translator
     </div>
     <div class="dark-toggle" onclick="toggleDarkMode()">🌓 <span id="themeLabel">Dark Mode</span></div>
@@ -262,7 +263,7 @@
   let isListening = false;
   let lastRecognized = "";
   let silenceTimeout;
-  const SILENCE_DELAY = 100; // 100ms silence trigger
+  const SILENCE_DELAY = 1500; // 100ms silence trigger
 
   const languages = [
     { name: "English (US)", code: "en-US", translate: "en" },
