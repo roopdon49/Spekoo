@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Live Speech Translator</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
   <style>
     :root {
       --primary: #007aff;
@@ -12,6 +12,14 @@
       --bg: #f2f4f8;
       --card-bg: #ffffff;
       --text: #1e1e1e;
+      --box-bg: #fefefe;
+    }
+
+    body.dark {
+      --bg: #1c1c1e;
+      --card-bg: #2c2c2e;
+      --text: #f4f4f4;
+      --box-bg: #3a3a3c;
     }
 
     * {
@@ -27,16 +35,23 @@
       flex-direction: column;
       align-items: center;
       padding: 20px;
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+
+    .top-bar {
+      width: 100%;
+      max-width: 800px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
     }
 
     .title {
       display: flex;
       align-items: center;
-      justify-content: center;
       gap: 12px;
-      margin: 0 0 20px;
       font-size: 2rem;
-      text-align: center;
       color: var(--primary);
       flex-wrap: wrap;
     }
@@ -44,7 +59,20 @@
     .title img {
       width: 48px;
       height: 48px;
-      object-fit: contain;
+    }
+
+    .dark-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      user-select: none;
+      font-weight: 500;
+      font-size: 14px;
+      background: var(--card-bg);
+      padding: 8px 14px;
+      border-radius: 12px;
+      border: 1px solid #ccc;
     }
 
     .container {
@@ -54,6 +82,7 @@
       padding: 24px;
       max-width: 750px;
       width: 100%;
+      transition: background 0.3s ease;
     }
 
     .row {
@@ -70,6 +99,12 @@
       border-radius: 10px;
       border: 1px solid #ccc;
       background: #f9f9f9;
+    }
+
+    body.dark select {
+      background: #333;
+      color: white;
+      border-color: #444;
     }
 
     #toggleBtn {
@@ -103,7 +138,7 @@
     }
 
     .box {
-      background: #fefefe;
+      background: var(--box-bg);
       padding: 14px;
       border-radius: 10px;
       border: 1px solid #ddd;
@@ -111,7 +146,7 @@
       max-height: 200px;
       overflow-y: auto;
       font-size: 16px;
-      transition: all 0.3s ease;
+      transition: background 0.3s ease, color 0.3s ease;
     }
 
     .box strong {
@@ -134,11 +169,19 @@
       .row {
         flex-direction: column;
       }
+
       select {
         flex: 1 1 100%;
       }
-      .title {
+
+      .top-bar {
         flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+      }
+
+      .title {
+        font-size: 1.5rem;
         gap: 8px;
       }
     }
@@ -146,15 +189,19 @@
 </head>
 <body>
 
-  <h1 class="title">
-    🎙️ Live Speech Translator
-    <img src="https://roopdon49.github.io/Spekoo/image.png" alt="Logo">
-  </h1>
+  <div class="top-bar">
+    <div class="title">
+      🎙️ Live Speech Translator
+      <img src="https://roopdon49.github.io/Spekoo/image.png" alt="Logo">
+    </div>
+    <div class="dark-toggle" onclick="toggleDarkMode()">🌓 <span id="themeLabel">Dark Mode</span></div>
+  </div>
 
   <div class="container">
     <div class="row">
       <select id="recognizeLang"></select>
       <select id="translateLang"></select>
+      <select id="voiceSelect"></select>
     </div>
 
     <button id="toggleBtn">🎤 Start Listening</button>
@@ -183,6 +230,8 @@
     const translatedTextDiv = document.getElementById('translatedText');
     const recognizeLangSelect = document.getElementById('recognizeLang');
     const translateLangSelect = document.getElementById('translateLang');
+    const voiceSelect = document.getElementById('voiceSelect');
+    const themeLabel = document.getElementById('themeLabel');
 
     let isListening = false;
     let lastRecognized = "";
@@ -254,19 +303,18 @@
           let existing = translatedTextDiv.innerText.trim();
           translatedTextDiv.innerText = translation + (existing ? '\n' + existing : '');
           translatedTextDiv.scrollTop = 0;
-          speakText(translation, targetLang);
+          speakText(translation);
         })
         .catch(() => {
           translatedTextDiv.innerText = 'Translation error';
         });
     }
 
-    function speakText(text, lang) {
+    function speakText(text) {
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = lang;
-      const voices = speechSynthesis.getVoices();
-      const match = voices.find(v => v.lang.toLowerCase().startsWith(lang.toLowerCase()));
-      if (match) utterance.voice = match;
+      const selectedVoice = voiceSelect.value;
+      const voice = speechSynthesis.getVoices().find(v => v.name === selectedVoice);
+      if (voice) utterance.voice = voice;
       speechSynthesis.cancel();
       speechSynthesis.speak(utterance);
     }
@@ -279,7 +327,34 @@
       });
     }
 
-    window.speechSynthesis.onvoiceschanged = () => {};
+    function toggleDarkMode() {
+      document.body.classList.toggle("dark");
+      const isDark = document.body.classList.contains("dark");
+      themeLabel.textContent = isDark ? "Light Mode" : "Dark Mode";
+    }
+
+    function populateVoices() {
+      const voices = speechSynthesis.getVoices();
+      voiceSelect.innerHTML = "";
+      const currentLang = translateLangSelect.value.toLowerCase();
+
+      voices
+        .filter(v => v.lang.toLowerCase().startsWith(currentLang))
+        .forEach(voice => {
+          const opt = document.createElement("option");
+          opt.value = voice.name;
+          opt.textContent = `${voice.name} (${voice.lang})`;
+          voiceSelect.appendChild(opt);
+        });
+
+      if (voiceSelect.options.length === 0) {
+        voiceSelect.innerHTML = '<option>No voice available</option>';
+      }
+    }
+
+    translateLangSelect.addEventListener("change", populateVoices);
+    window.speechSynthesis.onvoiceschanged = populateVoices;
+    window.onload = populateVoices;
   </script>
 </body>
 </html>
