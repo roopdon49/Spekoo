@@ -202,53 +202,45 @@
 
   <div class="container">
     <div class="row" style="flex-direction: column; gap: 12px;">
-      <label for="recognizeLang"><strong>🎙️ Recognition Language (Your Speech)</strong></label>
-      <select id="recognizeLang"></select>
+  <label for="recognizeLang"><strong>🎙️ Recognition Language (Your Speech)</strong></label>
+  <select id="recognizeLang"></select>
 
-      <label for="translateLang"><strong>🌐 Translation Language</strong></label>
-      <select id="translateLang"></select>
+  <label for="translateLang"><strong>🌐 Translation Language</strong></label>
+  <select id="translateLang"></select>
 
-      <label for="voiceSelect"><strong>🗣️ Voice for Translated Speech</strong></label>
-      <select id="voiceSelect"></select>
-    </div>
-
-    <!-- Custom Alert Modal -->
-    <div id="customAlert" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
-      background:white; border-radius:10px; padding:20px; box-shadow:0 0 10px rgba(0,0,0,0.3);
-      z-index:10000; max-width:300px; text-align:center; font-family: sans-serif;">
-      <h3 style="margin-top:0; font-weight:bold;">Spekoo</h3>
-      <p id="customAlertText" style="margin: 15px 0;"></p>
-      <button onclick="closeCustomAlert()" style="padding:8px 20px; border:none; background:#007BFF; color:#fff; border-radius:5px; cursor:pointer;">
-        OK
-      </button>
-    </div>
-
-    <!-- Toggle Mic Button -->
-    <button id="toggleBtn">🎤 Start Listening</button>
-    
-    
-   <!-- Interim / Partial Speech -->
-<div class="section">
-  <h3>🎧 Listening...</h3>
-  <div id="textview1" class="box" style="
-    color: gray;
-    font-style: italic;
-    max-height: 1.5em;
-    overflow-y: auto;
-    line-height: 1.6em;
-  "></div>
+  <label for="voiceSelect"><strong>🗣️ Voice for Translated Speech</strong></label>
+  <select id="voiceSelect"></select>
 </div>
 
 
-    <!-- Final Recognized Speech -->
+<div id="customAlert" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+  background:white; border-radius:10px; padding:20px; box-shadow:0 0 10px rgba(0,0,0,0.3);
+  z-index:10000; max-width:300px; text-align:center; font-family: sans-serif;">
+  <h3 style="margin-top:0; font-weight:bold;">Spekoo</h3>
+  <p id="customAlertText" style="margin: 15px 0;"></p>
+  <button onclick="closeCustomAlert()" style="padding:8px 20px; border:none; background:#007BFF; color:#fff; border-radius:5px; cursor:pointer;">
+    OK
+  </button>
+</div>
+
+
+
+
+
+    <button id="toggleBtn">🎤 Start Listening</button>
+
+
+ <div class="section">
+      <h3>listinging...</h3>
+      <div id="Textview" class="box"></div>
+    </div>
+
+
     <div class="section">
       <h3>Recognized Speech</h3>
       <div id="recognizedText" class="box"></div>
     </div>
 
-    
-
-    <!-- Translated Result -->
     <div class="section">
       <h3>
         Translated Text
@@ -258,62 +250,86 @@
     </div>
   </div>
 
-  <!-- Your main script should follow here -->
-  
-  
-  
- <script>
+ 
+<script>
   const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
   recognition.continuous = true;
   recognition.interimResults = true;
 
   const toggleBtn = document.getElementById('toggleBtn');
-  const recognizedTextDiv = document.getElementById('recognizedText');
-  const translatedTextDiv = document.getElementById('translatedText');
-  const interimTextDiv = document.getElementById('textview1'); // For partial results
+  const recognizedTextDiv = document.getElementById('recognizedText'); // For interim display
+  const translatedTextDiv = document.getElementById('translatedText'); // For translation output
   const recognizeLangSelect = document.getElementById('recognizeLang');
   const translateLangSelect = document.getElementById('translateLang');
   const voiceSelect = document.getElementById('voiceSelect');
   const themeLabel = document.getElementById('themeLabel');
 
   let isListening = false;
+  let lastFinal = "";
   let silenceTimeout;
-  let lastFinalText = "";
   const SILENCE_DELAY = 1500;
+
+  const languages = [
+    { name: "English (US)", code: "en-US", translate: "en" },
+    { name: "English (UK)", code: "en-GB", translate: "en" },
+    { name: "English (India)", code: "en-IN", translate: "en" },
+    { name: "Hindi", code: "hi-IN", translate: "hi" },
+    { name: "Spanish", code: "es-ES", translate: "es" },
+    { name: "French", code: "fr-FR", translate: "fr" },
+    { name: "German", code: "de-DE", translate: "de" },
+    { name: "Arabic", code: "ar-SA", translate: "ar" },
+    { name: "Chinese (Simplified)", code: "zh-CN", translate: "zh-CN" },
+    { name: "Japanese", code: "ja-JP", translate: "ja" }
+  ];
+
+  languages.forEach(lang => {
+    const opt1 = document.createElement("option");
+    opt1.value = lang.code;
+    opt1.textContent = lang.name;
+    recognizeLangSelect.appendChild(opt1);
+
+    const opt2 = document.createElement("option");
+    opt2.value = lang.translate;
+    opt2.textContent = lang.name;
+    translateLangSelect.appendChild(opt2);
+  });
+
+  recognizeLangSelect.value = "en-US";
+  translateLangSelect.value = "hi";
 
   recognition.onresult = function (event) {
     clearTimeout(silenceTimeout);
     silenceTimeout = setTimeout(() => recognition.stop(), SILENCE_DELAY);
 
-    let interim = "";
-    let final = "";
+    let interimTranscript = '';
+    let finalTranscript = '';
 
     for (let i = event.resultIndex; i < event.results.length; i++) {
       const transcript = event.results[i][0].transcript.trim();
       if (event.results[i].isFinal) {
-        final += transcript + " ";
+        finalTranscript += transcript + ' ';
       } else {
-        interim += transcript + " ";
+        interimTranscript += transcript + ' ';
       }
     }
 
-    if (interim) {
-      interimTextDiv.innerText = interim.trim(); // show partial speech live
+    interimTranscript = interimTranscript.trim();
+    finalTranscript = finalTranscript.trim();
+
+    // Show interim (partial) results only — live updating user speech display
+    if (interimTranscript) {
+      recognizedTextDiv.textContent = interimTranscript;
     }
 
-    if (final) {
-      final = final.trim();
-      interimTextDiv.innerText = ""; // clear partial once finalized
-      if (final !== lastFinalText) {
-        lastFinalText = final;
+    // When final result received — commit and translate
+    if (finalTranscript && finalTranscript !== lastFinal) {
+      lastFinal = finalTranscript;
 
-        // Save in display
-        const previous = recognizedTextDiv.innerHTML;
-        recognizedTextDiv.innerHTML = `<strong>${final}</strong><br>` + previous;
-
-        // Send for translation
-        translateText(final, translateLangSelect.value);
-      }
+      // Show final transcript prominently (bold)
+      recognizedTextDiv.innerHTML = `<strong>${finalTranscript}</strong>`;
+      
+      // Send the final transcript for translation
+      translateText(finalTranscript, translateLangSelect.value);
     }
   };
 
@@ -416,10 +432,9 @@
   window.onload = populateVoices;
 </script>
 
-  
-  
-  
 
+
+ 
 </body>
 
 
