@@ -194,8 +194,8 @@
 
   <div class="top-bar">
     <div class="title">
-      🎙️ Live Speech Translator
       <img src="https://roopdon49.github.io/Spekoo/image.png" alt="Logo">
+       🎙️ Live Speech Translator
     </div>
     <div class="dark-toggle" onclick="toggleDarkMode()">🌓 <span id="themeLabel">Dark Mode</span></div>
   </div>
@@ -230,12 +230,6 @@
     <button id="toggleBtn">🎤 Start Listening</button>
 
 
- <div class="section">
-      <h3>listinging...</h3>
-      <div id="Textview" class="box"></div>
-    </div>
-
-
     <div class="section">
       <h3>Recognized Speech</h3>
       <div id="recognizedText" class="box"></div>
@@ -255,11 +249,10 @@
 <script>
   const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
   recognition.continuous = true;
-  recognition.interimResults = true;
+  recognition.interimResults = false;
 
   const toggleBtn = document.getElementById('toggleBtn');
   const recognizedTextDiv = document.getElementById('recognizedText');
-  const partialTextDiv = document.getElementById('Textview');
   const translatedTextDiv = document.getElementById('translatedText');
   const recognizeLangSelect = document.getElementById('recognizeLang');
   const translateLangSelect = document.getElementById('translateLang');
@@ -267,8 +260,9 @@
   const themeLabel = document.getElementById('themeLabel');
 
   let isListening = false;
-  let lastFinalTranscript = "";
-  let silenceTimer;
+  let lastRecognized = "";
+  let silenceTimeout;
+  const SILENCE_DELAY = 100; // 100ms silence trigger
 
   const languages = [
     { name: "English (US)", code: "en-US", translate: "en" },
@@ -283,7 +277,6 @@
     { name: "Japanese", code: "ja-JP", translate: "ja" }
   ];
 
-  // Populate language options
   languages.forEach(lang => {
     const opt1 = document.createElement("option");
     opt1.value = lang.code;
@@ -300,61 +293,66 @@
   translateLangSelect.value = "hi";
 
   recognition.onresult = function(event) {
-    clearTimeout(silenceTimer);
+    clearTimeout(silenceTimeout);
+    silenceTimeout = setTimeout(() => {
+      recognition.stop(); // triggers onend, which restarts if listening
+    }, SILENCE_DELAY);
 
-    let interimTranscript = '';
-    let finalTranscript = '';
-
-    for (let i = event.resultIndex; i < event.results.length; i++) {
-      const transcript = event.results[i][0].transcript.trim();
-      if (event.results[i].isFinal) {
-        finalTranscript += transcript + ' ';
-      } else {
-        interimTranscript += transcript + ' ';
-      }
-    }
-
-    // Show partial result
-    partialTextDiv.textContent = interimTranscript;
-
-    // Final result logic
-    if (finalTranscript.trim()) {
+    const results = event.results;
+    const transcript = results[results.length - 1][0].transcript.trim();
+    if (transcript !== lastRecognized) {
+      lastRecognized = transcript;
       const previous = recognizedTextDiv.innerHTML.replace(/<strong>(.*?)<\/strong>/, '$1');
-      lastFinalTranscript = finalTranscript.trim();
-      recognizedTextDiv.innerHTML = `<strong>${lastFinalTranscript}</strong>` + (previous ? `<br>${previous}` : '');
-      translateText(lastFinalTranscript);
+      recognizedTextDiv.innerHTML = `<strong>${transcript}</strong>` + (previous ? `<br>${previous}` : '');
+      translateText(transcript, translateLangSelect.value);
     }
-
-    // Restart STT after 700ms silence
-    silenceTimer = setTimeout(() => {
-      recognition.stop();
-    }, 700);
   };
 
   recognition.onend = () => {
     if (isListening) recognition.start();
   };
 
-  toggleBtn.onclick = () => {
-    if (isListening) {
-      recognition.stop();
-      toggleBtn.textContent = "🎤 Start Listening";
-      toggleBtn.classList.remove("stop");
-      isListening = false;
-    } else {
-      recognition.lang = recognizeLangSelect.value;
-      recognition.start();
-      toggleBtn.textContent = "🛑 Stop Listening";
-      toggleBtn.classList.add("stop");
-      isListening = true;
-      if (window.innerWidth > 768) {
-        alert("🔊 For better recognition, please use an external microphone on desktop.");
-      }
-    }
-  };
+  let isDesktopAlertShown = false; // flag to show alert only once
 
-  function translateText(text) {
-    const targetLang = translateLangSelect.value;
+function isDesktop() {
+  // Simple desktop check based on screen width or user agent
+  return window.innerWidth > 768 && !/Mobi|Android/i.test(navigator.userAgent);
+}
+
+function showCustomAlert(message) {
+  document.getElementById("customAlertText").textContent = message;
+  document.getElementById("customAlert").style.display = "block";
+}
+
+function closeCustomAlert() {
+  document.getElementById("customAlert").style.display = "none";
+}
+
+toggleBtn.onclick = () => {
+  if (isListening) {
+    recognition.stop();
+    clearTimeout(silenceTimeout);
+    toggleBtn.textContent = "🎤 Start Listening";
+    toggleBtn.classList.remove("stop");
+    isListening = false;
+  } else {
+    recognition.lang = recognizeLangSelect.value;
+
+    // Show alert on desktop only once when starting for the first time
+    if (isDesktop() && !isDesktopAlertShown) {
+      showCustomAlert("For better speech recognition on desktop, please use an external microphone.");
+      isDesktopAlertShown = true;
+    }
+
+    recognition.start();
+    toggleBtn.textContent = "🛑 Stop Listening";
+    toggleBtn.classList.add("stop");
+    isListening = true;
+  }
+};
+
+
+  function translateText(text, targetLang) {
     const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
     fetch(url)
       .then(res => res.json())
@@ -383,7 +381,7 @@
     const lines = translatedTextDiv.innerText.trim().split('\n').reverse();
     const fullText = lines.join('\n');
     navigator.clipboard.writeText(fullText).then(() => {
-      alert("✅ Translated text copied!");
+      showCustomAlert("cpoed");
     });
   }
 
@@ -416,6 +414,7 @@
   window.speechSynthesis.onvoiceschanged = populateVoices;
   window.onload = populateVoices;
 </script>
+
 
 
 
