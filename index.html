@@ -251,14 +251,15 @@
   </div>
 
  
+
 <script>
   const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
   recognition.continuous = true;
   recognition.interimResults = true;
 
   const toggleBtn = document.getElementById('toggleBtn');
-  const recognizedTextDiv = document.getElementById('recognizedText');  // For final results only
-  const textviewDiv = document.getElementById('Textview');              // For interim results only
+  const recognizedTextDiv = document.getElementById('recognizedText');
+  const partialTextDiv = document.getElementById('Textview');
   const translatedTextDiv = document.getElementById('translatedText');
   const recognizeLangSelect = document.getElementById('recognizeLang');
   const translateLangSelect = document.getElementById('translateLang');
@@ -266,9 +267,8 @@
   const themeLabel = document.getElementById('themeLabel');
 
   let isListening = false;
-  let lastFinal = "";
-  let silenceTimeout;
-  const SILENCE_DELAY = 1500;
+  let lastFinalTranscript = "";
+  let silenceTimer;
 
   const languages = [
     { name: "English (US)", code: "en-US", translate: "en" },
@@ -283,7 +283,7 @@
     { name: "Japanese", code: "ja-JP", translate: "ja" }
   ];
 
-  // Populate language selectors
+  // Populate language options
   languages.forEach(lang => {
     const opt1 = document.createElement("option");
     opt1.value = lang.code;
@@ -299,9 +299,8 @@
   recognizeLangSelect.value = "en-US";
   translateLangSelect.value = "hi";
 
-  recognition.onresult = function (event) {
-    clearTimeout(silenceTimeout);
-    silenceTimeout = setTimeout(() => recognition.stop(), SILENCE_DELAY);
+  recognition.onresult = function(event) {
+    clearTimeout(silenceTimer);
 
     let interimTranscript = '';
     let finalTranscript = '';
@@ -315,63 +314,47 @@
       }
     }
 
-    interimTranscript = interimTranscript.trim();
-    finalTranscript = finalTranscript.trim();
+    // Show partial result
+    partialTextDiv.textContent = interimTranscript;
 
-    // Show interim transcript ONLY in Textview div
-    if (interimTranscript) {
-      textviewDiv.textContent = interimTranscript;
-    } else {
-      textviewDiv.textContent = '';
+    // Final result logic
+    if (finalTranscript.trim()) {
+      const previous = recognizedTextDiv.innerHTML.replace(/<strong>(.*?)<\/strong>/, '$1');
+      lastFinalTranscript = finalTranscript.trim();
+      recognizedTextDiv.innerHTML = `<strong>${lastFinalTranscript}</strong>` + (previous ? `<br>${previous}` : '');
+      translateText(lastFinalTranscript);
     }
 
-    // Show final transcript ONLY in recognizedText div, then translate and speak
-    if (finalTranscript && finalTranscript !== lastFinal) {
-      lastFinal = finalTranscript;
-      recognizedTextDiv.innerHTML = `<strong>${finalTranscript}</strong>`;
-      // Clear interim text as final is now shown
-      textviewDiv.textContent = '';
-      translateText(finalTranscript, translateLangSelect.value);
-    }
+    // Restart STT after 700ms silence
+    silenceTimer = setTimeout(() => {
+      recognition.stop();
+    }, 700);
   };
 
   recognition.onend = () => {
     if (isListening) recognition.start();
   };
 
-  let isDesktopAlertShown = false;
-
-  function isDesktop() {
-    return window.innerWidth > 768 && !/Mobi|Android/i.test(navigator.userAgent);
-  }
-
-  function showCustomAlert(message) {
-    alert("🔊 Spekoo: " + message);
-  }
-
   toggleBtn.onclick = () => {
     if (isListening) {
       recognition.stop();
-      clearTimeout(silenceTimeout);
       toggleBtn.textContent = "🎤 Start Listening";
       toggleBtn.classList.remove("stop");
       isListening = false;
     } else {
       recognition.lang = recognizeLangSelect.value;
-
-      if (isDesktop() && !isDesktopAlertShown) {
-        showCustomAlert("For better speech recognition on desktop, please use an external microphone.");
-        isDesktopAlertShown = true;
-      }
-
       recognition.start();
       toggleBtn.textContent = "🛑 Stop Listening";
       toggleBtn.classList.add("stop");
       isListening = true;
+      if (window.innerWidth > 768) {
+        alert("🔊 For better recognition, please use an external microphone on desktop.");
+      }
     }
   };
 
-  function translateText(text, targetLang) {
+  function translateText(text) {
+    const targetLang = translateLangSelect.value;
     const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
     fetch(url)
       .then(res => res.json())
@@ -400,7 +383,7 @@
     const lines = translatedTextDiv.innerText.trim().split('\n').reverse();
     const fullText = lines.join('\n');
     navigator.clipboard.writeText(fullText).then(() => {
-      alert("✅ Spekoo: Translated text copied!");
+      alert("✅ Translated text copied!");
     });
   }
 
@@ -433,6 +416,8 @@
   window.speechSynthesis.onvoiceschanged = populateVoices;
   window.onload = populateVoices;
 </script>
+
+
 
 
 
