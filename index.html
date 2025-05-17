@@ -257,8 +257,9 @@
   recognition.interimResults = true;
 
   const toggleBtn = document.getElementById('toggleBtn');
-  const recognizedTextDiv = document.getElementById('recognizedText'); // For interim display
-  const translatedTextDiv = document.getElementById('translatedText'); // For translation output
+  const recognizedTextDiv = document.getElementById('recognizedText');  // For final results only
+  const textviewDiv = document.getElementById('Textview');              // For interim results only
+  const translatedTextDiv = document.getElementById('translatedText');
   const recognizeLangSelect = document.getElementById('recognizeLang');
   const translateLangSelect = document.getElementById('translateLang');
   const voiceSelect = document.getElementById('voiceSelect');
@@ -282,6 +283,7 @@
     { name: "Japanese", code: "ja-JP", translate: "ja" }
   ];
 
+  // Populate language selectors
   languages.forEach(lang => {
     const opt1 = document.createElement("option");
     opt1.value = lang.code;
@@ -316,19 +318,19 @@
     interimTranscript = interimTranscript.trim();
     finalTranscript = finalTranscript.trim();
 
-    // Show interim (partial) results only — live updating user speech display
+    // Show interim transcript ONLY in Textview div
     if (interimTranscript) {
-      recognizedTextDiv.textContent = interimTranscript;
+      textviewDiv.textContent = interimTranscript;
+    } else {
+      textviewDiv.textContent = '';
     }
 
-    // When final result received — commit and translate
+    // Show final transcript ONLY in recognizedText div, then translate and speak
     if (finalTranscript && finalTranscript !== lastFinal) {
       lastFinal = finalTranscript;
-
-      // Show final transcript prominently (bold)
       recognizedTextDiv.innerHTML = `<strong>${finalTranscript}</strong>`;
-      
-      // Send the final transcript for translation
+      // Clear interim text as final is now shown
+      textviewDiv.textContent = '';
       translateText(finalTranscript, translateLangSelect.value);
     }
   };
@@ -431,6 +433,7 @@
   window.speechSynthesis.onvoiceschanged = populateVoices;
   window.onload = populateVoices;
 </script>
+
 
 
 
