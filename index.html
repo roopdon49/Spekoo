@@ -247,14 +247,15 @@
 
  
 
+
 <script>
   const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
   recognition.continuous = true;
-  recognition.interimResults = true;
+  recognition.interimResults = false; // Only final results
+  recognition.maxAlternatives = 1;
 
   const toggleBtn = document.getElementById('toggleBtn');
   const recognizedTextDiv = document.getElementById('recognizedText');
-  const partialTextDiv = document.getElementById('Textview');
   const translatedTextDiv = document.getElementById('translatedText');
   const recognizeLangSelect = document.getElementById('recognizeLang');
   const translateLangSelect = document.getElementById('translateLang');
@@ -262,7 +263,7 @@
   const themeLabel = document.getElementById('themeLabel');
 
   let isListening = false;
-  let lastFinalTranscript = "";
+  let lastRecognized = "";
   let silenceTimer;
 
   const languages = [
@@ -278,7 +279,6 @@
     { name: "Japanese", code: "ja-JP", translate: "ja" }
   ];
 
-  // Populate language options
   languages.forEach(lang => {
     const opt1 = document.createElement("option");
     opt1.value = lang.code;
@@ -296,31 +296,15 @@
 
   recognition.onresult = function(event) {
     clearTimeout(silenceTimer);
-
-    let interimTranscript = '';
-    let finalTranscript = '';
-
-    for (let i = event.resultIndex; i < event.results.length; i++) {
-      const transcript = event.results[i][0].transcript.trim();
-      if (event.results[i].isFinal) {
-        finalTranscript += transcript + ' ';
-      } else {
-        interimTranscript += transcript + ' ';
-      }
-    }
-
-    // Show partial result
-    partialTextDiv.textContent = interimTranscript;
-
-    // Final result logic
-    if (finalTranscript.trim()) {
+    const transcript = event.results[event.resultIndex][0].transcript.trim();
+    if (transcript !== lastRecognized) {
+      lastRecognized = transcript;
       const previous = recognizedTextDiv.innerHTML.replace(/<strong>(.*?)<\/strong>/, '$1');
-      lastFinalTranscript = finalTranscript.trim();
-      recognizedTextDiv.innerHTML = `<strong>${lastFinalTranscript}</strong>` + (previous ? `<br>${previous}` : '');
-      translateText(lastFinalTranscript);
+      recognizedTextDiv.innerHTML = `<strong>${transcript}</strong>` + (previous ? `<br>${previous}` : '');
+      translateText(transcript, translateLangSelect.value);
     }
 
-    // Restart STT after 700ms silence
+    // Restart STT if silence > 500ms
     silenceTimer = setTimeout(() => {
       recognition.stop();
     }, 1500);
@@ -374,9 +358,9 @@ toggleBtn.onclick = () => {
   
   
   
+  
 
-  function translateText(text) {
-    const targetLang = translateLangSelect.value;
+  function translateText(text, targetLang) {
     const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
     fetch(url)
       .then(res => res.json())
@@ -405,7 +389,7 @@ toggleBtn.onclick = () => {
     const lines = translatedTextDiv.innerText.trim().split('\n').reverse();
     const fullText = lines.join('\n');
     navigator.clipboard.writeText(fullText).then(() => {
-      showCustomAlert("    Translated Text copied.    ");
+      showCustomAlert("      Translated Text copied.      ");
     });
   }
 
@@ -419,7 +403,6 @@ toggleBtn.onclick = () => {
     const voices = speechSynthesis.getVoices();
     voiceSelect.innerHTML = "";
     const currentLang = translateLangSelect.value.toLowerCase();
-
     voices
       .filter(v => v.lang.toLowerCase().startsWith(currentLang))
       .forEach(voice => {
@@ -445,10 +428,10 @@ toggleBtn.onclick = () => {
 
 
 
-
  
 </body>
 
 
 
 </html>
+
