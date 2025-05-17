@@ -209,6 +209,21 @@
   <select id="voiceSelect"></select>
 </div>
 
+
+<div id="customAlert" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+  background:white; border-radius:10px; padding:20px; box-shadow:0 0 10px rgba(0,0,0,0.3);
+  z-index:10000; max-width:300px; text-align:center; font-family: sans-serif;">
+  <h3 style="margin-top:0; font-weight:bold;">Spekoo</h3>
+  <p id="customAlertText" style="margin: 15px 0;"></p>
+  <button onclick="closeCustomAlert()" style="padding:8px 20px; border:none; background:#007BFF; color:#fff; border-radius:5px; cursor:pointer;">
+    OK
+  </button>
+</div>
+
+
+
+
+
     <button id="toggleBtn">🎤 Start Listening</button>
 
     <div class="section">
@@ -226,10 +241,10 @@
   </div>
 
  
- <script>
+<script>
   const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
   recognition.continuous = true;
-  recognition.interimResults = false;
+  recognition.interimResults = true; // Enable partial results
 
   const toggleBtn = document.getElementById('toggleBtn');
   const recognizedTextDiv = document.getElementById('recognizedText');
@@ -242,7 +257,7 @@
   let isListening = false;
   let lastRecognized = "";
   let silenceTimeout;
-  const SILENCE_DELAY = 500; // 100ms silence trigger
+  const SILENCE_DELAY = 1500; // 500ms delay
 
   const languages = [
     { name: "English (US)", code: "en-US", translate: "en" },
@@ -272,41 +287,85 @@
   recognizeLangSelect.value = "en-US";
   translateLangSelect.value = "hi";
 
-  recognition.onresult = function(event) {
+  recognition.onresult = function (event) {
     clearTimeout(silenceTimeout);
     silenceTimeout = setTimeout(() => {
-      recognition.stop(); // triggers onend, which restarts if listening
+      recognition.stop(); // Stop after silence
     }, SILENCE_DELAY);
 
-    const results = event.results;
-    const transcript = results[results.length - 1][0].transcript.trim();
-    if (transcript !== lastRecognized) {
-      lastRecognized = transcript;
+    let interimTranscript = '';
+    let finalTranscript = '';
+
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const transcript = event.results[i][0].transcript.trim();
+      if (event.results[i].isFinal) {
+        finalTranscript += transcript + ' ';
+        if (transcript !== lastRecognized) {
+          lastRecognized = transcript;
+          const previous = recognizedTextDiv.innerHTML.replace(/<strong>(.*?)<\/strong>/, '$1');
+          recognizedTextDiv.innerHTML = `<strong>${transcript}</strong>` + (previous ? `<br>${previous}` : '');
+          translateText(transcript, translateLangSelect.value);
+        }
+      } else {
+        interimTranscript += transcript + ' ';
+      }
+    }
+
+    // Live update with partial
+    if (interimTranscript) {
       const previous = recognizedTextDiv.innerHTML.replace(/<strong>(.*?)<\/strong>/, '$1');
-      recognizedTextDiv.innerHTML = `<strong>${transcript}</strong>` + (previous ? `<br>${previous}` : '');
-      translateText(transcript, translateLangSelect.value);
+      recognizedTextDiv.innerHTML = `<em>${interimTranscript}</em>` + (previous ? `<br>${previous}` : '');
     }
   };
 
   recognition.onend = () => {
-    if (isListening) recognition.start();
+    if (isListening) recognition.start(); // Auto-restart
   };
 
-  toggleBtn.onclick = () => {
-    if (isListening) {
-      recognition.stop();
-      clearTimeout(silenceTimeout);
-      toggleBtn.textContent = "🎤 Start Listening";
-      toggleBtn.classList.remove("stop");
-      isListening = false;
-    } else {
-      recognition.lang = recognizeLangSelect.value;
-      recognition.start();
-      toggleBtn.textContent = "🛑 Stop Listening";
-      toggleBtn.classList.add("stop");
-      isListening = true;
+  
+  
+  let isDesktopAlertShown = false; // flag to show alert only once
+
+function isDesktop() {
+  // Simple desktop check based on screen width or user agent
+  return window.innerWidth > 768 && !/Mobi|Android/i.test(navigator.userAgent);
+}
+
+function showCustomAlert(message) {
+  document.getElementById("customAlertText").textContent = message;
+  document.getElementById("customAlert").style.display = "block";
+}
+
+function closeCustomAlert() {
+  document.getElementById("customAlert").style.display = "none";
+}
+
+toggleBtn.onclick = () => {
+  if (isListening) {
+    recognition.stop();
+    clearTimeout(silenceTimeout);
+    toggleBtn.textContent = "🎤 Start Listening";
+    toggleBtn.classList.remove("stop");
+    isListening = false;
+  } else {
+    recognition.lang = recognizeLangSelect.value;
+
+    // Show alert on desktop only once when starting for the first time
+    if (isDesktop() && !isDesktopAlertShown) {
+      showCustomAlert("For better speech recognition on desktop, please use an external microphone.");
+      isDesktopAlertShown = true;
     }
-  };
+
+    recognition.start();
+    toggleBtn.textContent = "🛑 Stop Listening";
+    toggleBtn.classList.add("stop");
+    isListening = true;
+  }
+};
+
+  
+  
+
 
   function translateText(text, targetLang) {
     const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
@@ -337,7 +396,7 @@
     const lines = translatedTextDiv.innerText.trim().split('\n').reverse();
     const fullText = lines.join('\n');
     navigator.clipboard.writeText(fullText).then(() => {
-      alert("✅ Translated text copied!");
+      showCustomAlert("✅ Translated text copied!");
     });
   }
 
@@ -371,7 +430,7 @@
   window.onload = populateVoices;
 </script>
 
- 
+
  
 </body>
 </html>
