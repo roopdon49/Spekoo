@@ -216,7 +216,7 @@
 
 <div id="customAlert" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
   background:white; border-radius:10px; padding:20px; box-shadow:0 0 10px rgba(0,0,0,0.3);
-  z-index:10000; max-width:300px; text-align:center; font-family: sans-serif;">
+  z-index:10000; max-width:600px; text-align:center; font-family: sans-serif;">
   <h3 style="margin-top:0; font-weight:bold;">Spekoo</h3>
   <p id="customAlertText" style="margin: 15px 0;"></p>
   <button onclick="closeCustomAlert()" style="padding:8px 20px; border:none; background:#007BFF; color:#fff; border-radius:5px; cursor:pointer;">
@@ -265,6 +265,7 @@
   let isListening = false;
   let lastRecognized = "";
   let silenceTimer;
+  let isDesktopAlertShown = false;
 
   const languages = [
     { name: "English (US)", code: "en-US", translate: "en" },
@@ -304,61 +305,52 @@
       translateText(transcript, translateLangSelect.value);
     }
 
-    // Restart STT if silence > 500ms
+    // Stop after 1500ms of silence
     silenceTimer = setTimeout(() => {
       recognition.stop();
     }, 1500);
   };
 
   recognition.onend = () => {
-    if (isListening) recognition.start();
+    if (isListening) {
+      recognition.start();
+    } else {
+      console.log("Recognition stopped intentionally.");
+    }
   };
 
-  
-  
-  let isDesktopAlertShown = false; // flag to show alert only once
-
-function isDesktop() {
-  // Simple desktop check based on screen width or user agent
-  return window.innerWidth > 768 && !/Mobi|Android/i.test(navigator.userAgent);
-}
-
-function showCustomAlert(message) {
-  document.getElementById("customAlertText").textContent = message;
-  document.getElementById("customAlert").style.display = "block";
-}
-
-function closeCustomAlert() {
-  document.getElementById("customAlert").style.display = "none";
-}
-
-toggleBtn.onclick = () => {
-  if (isListening) {
-    recognition.stop();
-    clearTimeout(silenceTimeout);
-    toggleBtn.textContent = "🎤 Start Listening";
-    toggleBtn.classList.remove("stop");
-    isListening = false;
-  } else {
-    recognition.lang = recognizeLangSelect.value;
-
-    // Show alert on desktop only once when starting for the first time
-    if (isDesktop() && !isDesktopAlertShown) {
-      showCustomAlert("For better speech recognition on desktop, please use an external microphone.");
-      isDesktopAlertShown = true;
-    }
-
-    recognition.start();
-    toggleBtn.textContent = "🛑 Stop Listening";
-    toggleBtn.classList.add("stop");
-    isListening = true;
+  function isDesktop() {
+    return window.innerWidth > 768 && !/Mobi|Android/i.test(navigator.userAgent);
   }
-};
 
-  
-  
-  
-  
+  function showCustomAlert(message) {
+    document.getElementById("customAlertText").textContent = message;
+    document.getElementById("customAlert").style.display = "block";
+  }
+
+  function closeCustomAlert() {
+    document.getElementById("customAlert").style.display = "none";
+  }
+
+  toggleBtn.onclick = () => {
+    if (isListening) {
+      recognition.stop();
+      clearTimeout(silenceTimer);
+      toggleBtn.textContent = "🎤 Start Listening";
+      toggleBtn.classList.remove("stop");
+      isListening = false;
+    } else {
+      recognition.lang = recognizeLangSelect.value;
+      if (isDesktop() && !isDesktopAlertShown) {
+        showCustomAlert("For better speech recognition on desktop, please use an external microphone.");
+        isDesktopAlertShown = true;
+      }
+      recognition.start();
+      toggleBtn.textContent = "🛑 Stop Listening";
+      toggleBtn.classList.add("stop");
+      isListening = true;
+    }
+  };
 
   function translateText(text, targetLang) {
     const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
@@ -423,15 +415,13 @@ toggleBtn.onclick = () => {
 </script>
 
 
-
-
-
-
-
  
 </body>
 
 
 
 </html>
+
+
+
 
