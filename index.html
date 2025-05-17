@@ -198,11 +198,16 @@
   </div>
 
   <div class="container">
-    <div class="row">
-      <select id="recognizeLang"></select>
-      <select id="translateLang"></select>
-      <select id="voiceSelect"></select>
-    </div>
+    <div class="row" style="flex-direction: column; gap: 12px;">
+  <label for="recognizeLang"><strong>🎙️ Recognition Language (Your Speech)</strong></label>
+  <select id="recognizeLang"></select>
+
+  <label for="translateLang"><strong>🌐 Translation Language</strong></label>
+  <select id="translateLang"></select>
+
+  <label for="voiceSelect"><strong>🗣️ Voice for Translated Speech</strong></label>
+  <select id="voiceSelect"></select>
+</div>
 
     <button id="toggleBtn">🎤 Start Listening</button>
 
@@ -224,6 +229,7 @@
     const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
     recognition.continuous = true;
     recognition.interimResults = false;
+    let hasShownMicTip = false;
 
     const toggleBtn = document.getElementById('toggleBtn');
     const recognizedTextDiv = document.getElementById('recognizedText');
@@ -280,19 +286,26 @@
     };
 
     toggleBtn.onclick = () => {
-      if (isListening) {
-        recognition.stop();
-        toggleBtn.textContent = "🎤 Start Listening";
-        toggleBtn.classList.remove("stop");
-        isListening = false;
-      } else {
-        recognition.lang = recognizeLangSelect.value;
-        recognition.start();
-        toggleBtn.textContent = "🛑 Stop Listening";
-        toggleBtn.classList.add("stop");
-        isListening = true;
-      }
-    };
+  if (isListening) {
+    recognition.stop();
+    toggleBtn.textContent = "🎤 Start Listening";
+    toggleBtn.classList.remove("stop");
+    isListening = false;
+  } else {
+    // Show external mic tip once on desktop
+    if (!hasShownMicTip && window.innerWidth > 768 && !/Android|iPhone|iPad/i.test(navigator.userAgent)) {
+      alert("💡 Tip: For better accuracy, consider using an external microphone on desktop.");
+      hasShownMicTip = true;
+    }
+
+    recognition.lang = recognizeLangSelect.value;
+    recognition.start();
+    toggleBtn.textContent = "🛑 Stop Listening";
+    toggleBtn.classList.add("stop");
+    isListening = true;
+  }
+};
+
 
     function translateText(text, targetLang) {
       const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
