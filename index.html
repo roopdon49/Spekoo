@@ -248,11 +248,10 @@
  
 
 
-<!-- HTML Elements (buttons, selects, etc.) assumed to exist -->
 <script>
   const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
   recognition.continuous = true;
-  recognition.interimResults = false;
+  recognition.interimResults = false; // Only final results
   recognition.maxAlternatives = 1;
 
   const toggleBtn = document.getElementById('toggleBtn');
@@ -266,6 +265,7 @@
   let isListening = false;
   let lastRecognized = "";
   let silenceTimer;
+  let isDesktopAlertShown = false;
 
   const languages = [
     { name: "English (US)", code: "en-US", translate: "en" },
@@ -305,21 +305,46 @@
       translateText(transcript, translateLangSelect.value);
     }
 
-    silenceTimer = setTimeout(() => recognition.stop(), 1500);
+    // Stop after 1500ms of silence
+    silenceTimer = setTimeout(() => {
+      recognition.stop();
+    }, 1500);
   };
 
   recognition.onend = () => {
-    if (isListening) recognition.start();
+    if (isListening) {
+      recognition.start();
+    } else {
+      console.log("Recognition stopped intentionally.");
+    }
   };
+
+  function isDesktop() {
+    return window.innerWidth > 768 && !/Mobi|Android/i.test(navigator.userAgent);
+  }
+
+  function showCustomAlert(message) {
+    document.getElementById("customAlertText").textContent = message;
+    document.getElementById("customAlert").style.display = "block";
+  }
+
+  function closeCustomAlert() {
+    document.getElementById("customAlert").style.display = "none";
+  }
 
   toggleBtn.onclick = () => {
     if (isListening) {
       recognition.stop();
+      clearTimeout(silenceTimer);
       toggleBtn.textContent = "🎤 Start Listening";
       toggleBtn.classList.remove("stop");
       isListening = false;
     } else {
       recognition.lang = recognizeLangSelect.value;
+      if (isDesktop() && !isDesktopAlertShown) {
+        showCustomAlert("For better speech recognition on desktop, please use an external microphone.");
+        isDesktopAlertShown = true;
+      }
       recognition.start();
       toggleBtn.textContent = "🛑 Stop Listening";
       toggleBtn.classList.add("stop");
@@ -336,38 +361,27 @@
         let existing = translatedTextDiv.innerText.trim();
         translatedTextDiv.innerText = translation + (existing ? '\n' + existing : '');
         translatedTextDiv.scrollTop = 0;
-        speakTextAndDownload(translation);
+        speakText(translation);
       })
       .catch(() => {
         translatedTextDiv.innerText = 'Translation error';
       });
   }
 
-  function speakTextAndDownload(text) {
+  function speakText(text) {
     const utterance = new SpeechSynthesisUtterance(text);
     const selectedVoice = voiceSelect.value;
     const voice = speechSynthesis.getVoices().find(v => v.name === selectedVoice);
     if (voice) utterance.voice = voice;
-
     speechSynthesis.cancel();
     speechSynthesis.speak(utterance);
-
-    // Download the text as an MP3 file (simulate using .txt and rename)
-    const blob = new Blob([text], { type: 'text/plain' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = 'translated_audio.mp3';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
   }
 
   function copyTranslatedText() {
     const lines = translatedTextDiv.innerText.trim().split('\n').reverse();
     const fullText = lines.join('\n');
     navigator.clipboard.writeText(fullText).then(() => {
-      alert("✅ Translated text copied & downloading as MP3.");
-      speakTextAndDownload(fullText);
+      showCustomAlert("      Translated Text copied.      ");
     });
   }
 
@@ -389,6 +403,7 @@
         opt.textContent = `${voice.name} (${voice.lang})`;
         voiceSelect.appendChild(opt);
       });
+
     if (voiceSelect.options.length === 0) {
       voiceSelect.innerHTML = '<option>No voice available</option>';
     }
@@ -398,7 +413,6 @@
   window.speechSynthesis.onvoiceschanged = populateVoices;
   window.onload = populateVoices;
 </script>
-
 
 
  
