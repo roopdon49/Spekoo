@@ -251,7 +251,7 @@
 <script>
   const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
   recognition.continuous = true;
-  recognition.interimResults = false; // Only final results
+  recognition.interimResults = false;
   recognition.maxAlternatives = 1;
 
   const toggleBtn = document.getElementById('toggleBtn');
@@ -265,7 +265,6 @@
   let isListening = false;
   let lastRecognized = "";
   let silenceTimer;
-  let isDesktopAlertShown = false;
 
   const languages = [
     { name: "English (US)", code: "en-US", translate: "en" },
@@ -305,27 +304,23 @@
       translateText(transcript, translateLangSelect.value);
     }
 
-    // Stop after 1500ms of silence
     silenceTimer = setTimeout(() => {
       recognition.stop();
     }, 1500);
   };
 
   recognition.onend = () => {
-    if (isListening) {
-      recognition.start();
-    } else {
-      console.log("Recognition stopped intentionally.");
-    }
+    if (isListening) recognition.start();
   };
+
+  let isDesktopAlertShown = false;
 
   function isDesktop() {
     return window.innerWidth > 768 && !/Mobi|Android/i.test(navigator.userAgent);
   }
 
   function showCustomAlert(message) {
-    document.getElementById("customAlertText").textContent = message;
-    document.getElementById("customAlert").style.display = "block";
+    alert(message); // Replace with custom modal if needed
   }
 
   function closeCustomAlert() {
@@ -380,9 +375,53 @@
   function copyTranslatedText() {
     const lines = translatedTextDiv.innerText.trim().split('\n').reverse();
     const fullText = lines.join('\n');
+
     navigator.clipboard.writeText(fullText).then(() => {
-      showCustomAlert("      Translated Text copied.      ");
+      showCustomAlert("Translated Text copied.");
     });
+
+    downloadSpeechAsAudio(fullText);
+  }
+
+  function downloadSpeechAsAudio(text) {
+    const synth = window.speechSynthesis;
+    const utterance = new SpeechSynthesisUtterance(text);
+    const selectedVoice = voiceSelect.value;
+    const voice = synth.getVoices().find(v => v.name === selectedVoice);
+    if (voice) utterance.voice = voice;
+
+    const audioContext = new AudioContext();
+    const dest = audioContext.createMediaStreamDestination();
+    const recorder = new MediaRecorder(dest.stream);
+    const source = audioContext.createMediaStreamSource(dest);
+    const chunks = [];
+
+    recorder.ondataavailable = e => {
+      if (e.data.size > 0) chunks.push(e.data);
+    };
+
+    recorder.onstop = () => {
+      const blob = new Blob(chunks, { type: 'audio/webm' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'translated_speech.webm';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    };
+
+    recorder.start();
+
+    utterance.onend = () => {
+      setTimeout(() => {
+        recorder.stop();
+        audioContext.close();
+      }, 100);
+    };
+
+    synth.cancel(); // Stop any current speech
+    synth.speak(utterance);
   }
 
   function toggleDarkMode() {
@@ -413,6 +452,7 @@
   window.speechSynthesis.onvoiceschanged = populateVoices;
   window.onload = populateVoices;
 </script>
+
 
 
  
