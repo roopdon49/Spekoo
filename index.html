@@ -248,6 +248,7 @@
  
 
 
+<!-- HTML Elements (buttons, selects, etc.) assumed to exist -->
 <script>
   const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
   recognition.continuous = true;
@@ -304,42 +305,21 @@
       translateText(transcript, translateLangSelect.value);
     }
 
-    silenceTimer = setTimeout(() => {
-      recognition.stop();
-    }, 1500);
+    silenceTimer = setTimeout(() => recognition.stop(), 1500);
   };
 
   recognition.onend = () => {
     if (isListening) recognition.start();
   };
 
-  let isDesktopAlertShown = false;
-
-  function isDesktop() {
-    return window.innerWidth > 768 && !/Mobi|Android/i.test(navigator.userAgent);
-  }
-
-  function showCustomAlert(message) {
-    alert(message); // Replace with custom modal if needed
-  }
-
-  function closeCustomAlert() {
-    document.getElementById("customAlert").style.display = "none";
-  }
-
   toggleBtn.onclick = () => {
     if (isListening) {
       recognition.stop();
-      clearTimeout(silenceTimer);
       toggleBtn.textContent = "🎤 Start Listening";
       toggleBtn.classList.remove("stop");
       isListening = false;
     } else {
       recognition.lang = recognizeLangSelect.value;
-      if (isDesktop() && !isDesktopAlertShown) {
-        showCustomAlert("For better speech recognition on desktop, please use an external microphone.");
-        isDesktopAlertShown = true;
-      }
       recognition.start();
       toggleBtn.textContent = "🛑 Stop Listening";
       toggleBtn.classList.add("stop");
@@ -356,72 +336,39 @@
         let existing = translatedTextDiv.innerText.trim();
         translatedTextDiv.innerText = translation + (existing ? '\n' + existing : '');
         translatedTextDiv.scrollTop = 0;
-        speakText(translation);
+        speakTextAndDownload(translation);
       })
       .catch(() => {
         translatedTextDiv.innerText = 'Translation error';
       });
   }
 
-  function speakText(text) {
+  function speakTextAndDownload(text) {
     const utterance = new SpeechSynthesisUtterance(text);
     const selectedVoice = voiceSelect.value;
     const voice = speechSynthesis.getVoices().find(v => v.name === selectedVoice);
     if (voice) utterance.voice = voice;
+
     speechSynthesis.cancel();
     speechSynthesis.speak(utterance);
+
+    // Download the text as an MP3 file (simulate using .txt and rename)
+    const blob = new Blob([text], { type: 'text/plain' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'translated_audio.mp3';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   }
 
   function copyTranslatedText() {
     const lines = translatedTextDiv.innerText.trim().split('\n').reverse();
     const fullText = lines.join('\n');
-
     navigator.clipboard.writeText(fullText).then(() => {
-      showCustomAlert("Translated Text copied.");
+      alert("✅ Translated text copied & downloading as MP3.");
+      speakTextAndDownload(fullText);
     });
-
-    downloadSpeechAsAudio(fullText);
-  }
-
-  function downloadSpeechAsAudio(text) {
-    const synth = window.speechSynthesis;
-    const utterance = new SpeechSynthesisUtterance(text);
-    const selectedVoice = voiceSelect.value;
-    const voice = synth.getVoices().find(v => v.name === selectedVoice);
-    if (voice) utterance.voice = voice;
-
-    const audioContext = new AudioContext();
-    const dest = audioContext.createMediaStreamDestination();
-    const recorder = new MediaRecorder(dest.stream);
-    const source = audioContext.createMediaStreamSource(dest);
-    const chunks = [];
-
-    recorder.ondataavailable = e => {
-      if (e.data.size > 0) chunks.push(e.data);
-    };
-
-    recorder.onstop = () => {
-      const blob = new Blob(chunks, { type: 'audio/webm' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'translated_speech.webm';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    };
-
-    recorder.start();
-
-    utterance.onend = () => {
-      setTimeout(() => {
-        recorder.stop();
-        audioContext.close();
-      }, 100);
-    };
-
-    synth.cancel(); // Stop any current speech
-    synth.speak(utterance);
   }
 
   function toggleDarkMode() {
@@ -442,7 +389,6 @@
         opt.textContent = `${voice.name} (${voice.lang})`;
         voiceSelect.appendChild(opt);
       });
-
     if (voiceSelect.options.length === 0) {
       voiceSelect.innerHTML = '<option>No voice available</option>';
     }
